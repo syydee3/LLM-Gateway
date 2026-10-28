@@ -62,7 +62,8 @@ func main() {
 
 	rateLimiter := middleware.NewRateLimiter(ctx, cfg.RateLimitRPM)
 	router := proxy.NewRouter(routes)
-	handler := proxy.NewHandler(router, scrubber)
+	cache := middleware.NewCache(ctx, 5*time.Minute)
+	handler := proxy.NewHandler(router, scrubber, cache)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /v1/chat/completions", rateLimiter.Wrap(handler.HandleChatCompletions))

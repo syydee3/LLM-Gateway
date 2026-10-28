@@ -12,10 +12,15 @@ import (
 type Handler struct {
 	router   *Router
 	scrubber *middleware.Scrubber
+	cache    *middleware.Cache
 }
 
-func NewHandler(router *Router, scrubber *middleware.Scrubber) *Handler {
-	return &Handler{router: router, scrubber: scrubber}
+func NewHandler(router *Router, scrubber *middleware.Scrubber, cache *middleware.Cache) *Handler {
+	return &Handler{
+		router:   router,
+		scrubber: scrubber,
+		cache:    cache,
+	}
 }
 
 func (h *Handler) HandleChatCompletions(w http.ResponseWriter, r *http.Request) {
@@ -32,6 +37,17 @@ func (h *Handler) HandleChatCompletions(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	var cacheKey string
+	if h.cache != nil {
+		cacheKey = h.cache.BuildKey(req)
+		if cachedResp, ok := h.cache.Get(cacheKey); ok {
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("X-Cache", "HIT")
+			_ = json.NewEncoder(w).Encode(cachedResp)
+			return
+		}
+	}
+
 	resp, err := h.router.RouteChat(r.Context(), req)
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
@@ -40,7 +56,12 @@ func (h *Handler) HandleChatCompletions(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	if h.cache != nil {
+		h.cache.Set(cacheKey, resp)
+	}
+
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("X-Cache", "MISS")
 	_ = json.NewEncoder(w).Encode(resp)
 }
 
