@@ -1,0 +1,31 @@
+{
+  "port": 8080,
+  "read_timeout_sec": 15,
+  "write_timeout_sec": 120,
+  "rate_limit_rpm": 60,
+  "scrub_pii": true,
+  "pii_patterns": [
+    "(?i)(api[_-]?key|secret|token)[\\s:=]+[\"'`]?[a-zA-Z0-9_\\-]{16,}[\"'`]?",
+    "\\b0x[a-fA-F0-9]{40}\\b"
+  ],
+  "virtual_models": {
+    "smart-tier": {
+      "targets": [
+        {
+          "provider": "gemini",
+          "model": "gemini-2.5-flash",
+          "timeout_ms": 10000,
+          "max_failures": 2,
+          "cooldown_sec": 30
+        },
+        {
+          "provider": "mock",
+          "model": "fallback-local-v1",
+          "timeout_ms": 5000,
+          "max_failures": 5,
+          "cooldown_sec": 10
+        }
+      ]
+    }
+  }
+}
